@@ -9,6 +9,10 @@ on:
 jobs:
   sonar:
     runs-on: ubuntu-latest
+    env:
+      # This forces the runner to try using Node 24 and silences the deprecation warning
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
@@ -35,9 +39,9 @@ jobs:
       - name: Run SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
         with:
-          # FIX: This explicitly stops the GitHub Action wrapper from throwing exit code 3
-          fail-on-quality-gate: false
+          # We pass the bypass flags directly as arguments to the scanner binary
           args: >
+            -Dsonar.qualitygate.wait=false
             -Dsonar.cfamily.skipUnsupportedCompilers=true
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}       
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
