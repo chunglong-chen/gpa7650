@@ -1,0 +1,41 @@
+name: Embedded C Static Analysis
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  sonar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Bear and GCC
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bear build-essential
+
+      - name: Fake Build to Generate Compilation Database
+        run: |
+          # Create a dummy shell script that pretends to compile every C file you wrote
+          echo "#!/bin/sh" > fake_build.sh
+          
+          # Loop through your source directory (change 'src' to your actual folder)
+          find src -name "*.c" | while read file; do
+            echo "gcc -fsyntax-only -Isrc \$file" >> fake_build.sh
+          done
+          
+          chmod +x fake_build.sh
+          
+          # Intercept the fake script using Bear to generate compile_commands.json
+          bear -- ./fake_build.sh
+
+      - name: Run SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
