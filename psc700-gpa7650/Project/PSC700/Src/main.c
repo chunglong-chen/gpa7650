@@ -51,4 +51,4 @@ int main()
 }
 
 // Test push trigger Sonarqube scan.
-// Test push trigger Sonarqube scan.
+
