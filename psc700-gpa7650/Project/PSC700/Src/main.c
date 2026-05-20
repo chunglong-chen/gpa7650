@@ -49,3 +49,5 @@ int main()
 
     return 0;
 }
+
+// Test push trigger Sonarqube scan.
