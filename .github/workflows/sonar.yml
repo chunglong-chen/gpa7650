@@ -36,6 +36,9 @@ jobs:
           bear -- ./fake_build.sh
 
       - name: Run SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v6  # Updated version
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=false
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
