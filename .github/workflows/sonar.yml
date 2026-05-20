@@ -10,38 +10,47 @@ jobs:
   sonar:
     runs-on: ubuntu-latest
     env:
-      # This forces the runner to try using Node 24 and silences the deprecation warning
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Ensures blame data is available
 
       - name: Install Bear and GCC
         run: |
           sudo apt-get update
           sudo apt-get install -y bear build-essential
 
-      - name: Fake Build to Generate Compilation Database
+      - name: Generate Compilation Database
         run: |
           echo "#!/bin/sh" > fake_build.sh
           
-          # Find files inside 'src' (or change to '.' if your files are in the root directory)
-          find src -name "*.c" | while read file; do
-            echo "gcc -fsyntax-only -Isrc $file" >> fake_build.sh
+          # This automatically adapts whether your files are in root or a folder
+          # It finds all .c files anywhere in the workspace
+          find . -name "*.c" -not -path "*/.*" | while read file; do
+            dir=$(dirname "$file")
+            echo "gcc -fsyntax-only -I$dir $file" >> fake_build.sh
           done
+          
+          echo "=== Generated Build Script ==="
+          cat fake_build.sh
+          echo "=============================="
           
           chmod +x fake_build.sh
           bear -- ./fake_build.sh
+          
+          echo "=== Generated Compilation Database ==="
+          cat compile_commands.json
+          echo "======================================"
 
       - name: Run SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
         with:
-          # We pass the bypass flags directly as arguments to the scanner binary
           args: >
             -Dsonar.qualitygate.wait=false
             -Dsonar.cfamily.skipUnsupportedCompilers=true
+            -Dsonar.verbose=true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
