@@ -25,24 +25,51 @@ jobs:
 
       - name: Generate Compilation Database
         run: |
+          mkdir -p ./.github_stubs
           echo "#!/bin/sh" > fake_build.sh
           
-          # This automatically adapts whether your files are in root or a folder
-          # It finds all .c files anywhere in the workspace
-          find . -name "*.c" -not -path "*/.*" | while read file; do
-            dir=$(dirname "$file")
-            echo "gcc -fsyntax-only -I$dir $file" >> fake_build.sh
+          # 1. Gather all unique directories containing YOUR headers
+          INCLUDES="-I./.github_stubs"
+          while read -r dir; do
+            INCLUDES="$INCLUDES -I$dir"
+          done < <(find . -name "*.h" -not -path "*/.*" -exec dirname {} \; | sort -u)
+          
+          # 2. Write the base compilation script
+          find . -name "*.c" -not -path "*/.*" | while read -r file; do
+            echo "gcc -fsyntax-only $INCLUDES \$@" >> fake_build.sh
           done
-          
-          echo "=== Generated Build Script ==="
-          cat fake_build.sh
-          echo "=============================="
-          
           chmod +x fake_build.sh
-          bear -- ./fake_build.sh
+
+          echo "=== Iteratively Resolving Missing Headers ==="
+          # 3. Loop to find missing headers and stub them until gcc passes
+          MAX_ATTEMPTS=10
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Attempt $i to run fake_build.sh..."
+            
+            # Run the script and capture standard error to find missing files
+            MISSING_HEADER=$(./fake_build.sh 2>&1 | grep -E "fatal error: .* No such file or directory" | head -n 1 | sed -E "s/.*fatal error: (.*): No such file.*/\1/")
+            
+            if [ -z "$MISSING_HEADER" ]; then
+              echo "All header dependencies resolved!"
+              break
+            fi
+            
+            echo "Found missing header: $MISSING_HEADER. Creating stub..."
+            touch "./.github_stubs/$MISSING_HEADER"
+          done
+
+          echo "=== Generating Final Compilation Database ==="
+          # 4. Now that GCC can pass without fatal errors, let Bear record it
+          bear -- ./fake_build.sh > /dev/null 2>&1 || true
           
           echo "=== Generated Compilation Database ==="
-          cat compile_commands.json
+          if [ -f compile_commands.json ]; then
+            # Print a quick summary instead of the entire giant json
+            head -n 30 compile_commands.json
+            echo "... (truncated) ..."
+          else
+            echo "ERROR: compile_commands.json was not generated!" && exit 1
+          fi
           echo "======================================"
 
       - name: Run SonarQube Scan
