@@ -79,5 +79,7 @@ jobs:
             -Dsonar.qualitygate.wait=false
             -Dsonar.cfamily.skipUnsupportedCompilers=true
             -Dsonar.verbose=true
+            -Dsonar.c.compiler.parser.caching=false
+            -Dsonar.analyzer.buffer.size=2048
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
