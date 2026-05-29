@@ -36,7 +36,7 @@ jobs:
           
           # 2. Write the base compilation script
           find . -name "*.c" -not -path "*/.*" | while read -r file; do
-            echo "gcc -fsyntax-only $INCLUDES \$@" >> fake_build.sh
+            echo "gcc -fsyntax-only $INCLUDES \"$file\" \$@" >> fake_build.sh
           done
           chmod +x fake_build.sh
 
@@ -55,6 +55,7 @@ jobs:
             fi
             
             echo "Found missing header: $MISSING_HEADER. Creating stub..."
+            mkdir -p "./.github_stubs/$(dirname "$MISSING_HEADER")"
             touch "./.github_stubs/$MISSING_HEADER"
           done
 
